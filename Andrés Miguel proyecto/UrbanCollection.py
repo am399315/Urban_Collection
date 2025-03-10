@@ -3,6 +3,7 @@ import pygame
 import random
 import heapq
 import time
+import math
 
 # Configuración básica
 ANCHO, ALTO = 800, 600
@@ -21,9 +22,26 @@ ROJO = (255, 0, 0)
 VERDE = (0, 255, 0)
 NARANJA = (255, 140, 0)
 
+# Carga de sprites
+jugador_imagen = pygame.image.load("Sprites/jugador.png")
+enemigo_imagen = pygame.image.load("Sprites/enemigo.png")
+moneda_amarilla_imagen = pygame.image.load("Sprites/moneda.png")
+moneda_roja_imagen = pygame.image.load("Sprites/moneda roja.png")
+humo_imagen = pygame.image.load("Sprites/humo.png")
+
+# Andrés Miguel Escolastico Lara 23-EISN-2-056
+
+# Carga de sonidos
+pygame.mixer.init()
+sonido_moneda = pygame.mixer.Sound("Sonidos\coger moneda.mp3")
+sonido_humo = pygame.mixer.Sound("Sonidos\soltar humo.mp3")
+pygame.mixer.music.load("Sonidos\música fondo.mp3")
+pygame.mixer.music.play(-1)
+
 # Variables del jugador
 jugador_ancho = TAM_CELDA // 2
 jugador_alto = TAM_CELDA // 2
+direccion = "arriba"
 
 # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -306,10 +324,31 @@ def mover_enemigos():
 
 # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
+# Función para rotar a los enemigos dependiendo de la posición del jugador
+def rotar_imagen_enemigo(enemigo_x, enemigo_y, jugador_x, jugador_y):
+    # Calcular la diferencia en las coordenadas
+    dx = jugador_x - enemigo_x
+    dy = jugador_y - enemigo_y
+
+    # Calcular el ángulo en radianes (teniendo en cuenta que el eje Y está invertido)
+    angulo_radianes = math.atan2(dy, dx)  # Usamos -dy para corregir la dirección
+
+    # Convertir el ángulo a grados
+    angulo_grados = math.degrees(angulo_radianes)
+
+    # Ajustar el ángulo al múltiplo de 90 grados más cercano
+    angulo_ajustado = round(angulo_grados / 90) * 90
+
+    # Rotar la imagen del enemigo
+    enemigo_imagen_rotada = pygame.transform.rotate(enemigo_imagen, -angulo_ajustado)
+    return enemigo_imagen_rotada
+
 # Función para dibujar los enemigos
 def dibujar_enemigos():
     for enemigo_x, enemigo_y in enemigos:
-        pygame.draw.rect(pantalla, ROJO, (enemigo_x, enemigo_y, enemigo_ancho, enemigo_alto))
+        # Rotar la imagen del enemigo según la dirección del jugador
+        enemigo_imagen_rotada = rotar_imagen_enemigo(enemigo_x, enemigo_y, pos_x, pos_y)
+        pantalla.blit(enemigo_imagen_rotada, (enemigo_x, enemigo_y))
 
 # Función para verificar si el jugador ha chocado con algún enemigo
 def verificar_colision_con_enemigos():
@@ -354,7 +393,7 @@ def actualizar_humo():
 
 def dibujar_humo():
     if humo_activo:
-        pygame.draw.circle(pantalla, GRIS_OSCURO, (int(humo_x), int(humo_y)), TAM_CELDA // 2)
+        pantalla.blit(humo_imagen, (humo_x, humo_y))
 
 # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -596,6 +635,7 @@ while jugando:
         for moneda in monedas[:]:
             if abs(moneda[0] - pos_x) < TAM_CELDA // 2 and abs(moneda[1] - pos_y) < TAM_CELDA // 2:
                 monedas.remove(moneda)
+                sonido_moneda.play()
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -614,9 +654,7 @@ while jugando:
             pygame.time.delay(2000)  # Pausa entre rondas
             generar_enemigos_en_ronda()  # Generar enemigos
 
-        # Dibujar el humo
-        actualizar_humo()
-        dibujar_humo()
+
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -630,16 +668,13 @@ while jugando:
 
         # Dibujar monedas amarillas
         for moneda in monedas[:]:
-            pygame.draw.circle(pantalla, AMARILLO, moneda, TAM_CELDA // 6)
+            pantalla.blit(moneda_amarilla_imagen, (moneda[0] - TAM_CELDA // 6, moneda[1] - TAM_CELDA // 6))
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
         # Dibujar monedas rojas
         for moneda_roja in monedas_rojas[:]:
-            pygame.draw.circle(pantalla, ROJO, moneda_roja, TAM_CELDA // 6)
-
-        # Dibujar jugador
-        pygame.draw.rect(pantalla, BLANCO, (pos_x, pos_y, jugador_ancho, jugador_alto))
+            pantalla.blit(moneda_roja_imagen, (moneda_roja[0] - TAM_CELDA // 6, moneda_roja[1] - TAM_CELDA // 6))
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -683,17 +718,35 @@ while jugando:
 
         if keys[pygame.K_UP]:
             nueva_y -= velocidad
+            direccion = "arriba"  # El jugador va hacia arriba
         if keys[pygame.K_DOWN]:
             nueva_y += velocidad
+            direccion = "abajo"  # El jugador va hacia abajo
         if keys[pygame.K_LEFT]:
             nueva_x -= velocidad
+            direccion = "izquierda"  # El jugador va hacia la izquierda
         if keys[pygame.K_RIGHT]:
             nueva_x += velocidad
+            direccion = "derecha"  # El jugador va hacia la derecha
+
+        # Rotar la imagen del jugador según la dirección
+        if direccion == "arriba":
+            jugador_imagen_rotada = jugador_imagen
+        elif direccion == "derecha":
+            jugador_imagen_rotada = pygame.transform.rotate(jugador_imagen, 270)
+        elif direccion == "abajo":
+            jugador_imagen_rotada = pygame.transform.rotate(jugador_imagen, 180)
+        elif direccion == "izquierda":
+            jugador_imagen_rotada = pygame.transform.rotate(jugador_imagen, 90)
+
+        # Dibujar jugador
+        pantalla.blit(jugador_imagen_rotada, (pos_x, pos_y))
 
         # Detectar si el jugador presiona la barra espaciadora
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE]:
             soltar_humo()
+            sonido_humo.play()
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
 
@@ -706,8 +759,13 @@ while jugando:
             if abs(moneda_roja[0] - pos_x) < TAM_CELDA // 2 and abs(moneda_roja[1] - pos_y) < TAM_CELDA // 2:
                 gasolina = min(100, gasolina + 100)  # Recargar gasolina al recolectar
                 monedas_rojas.remove(moneda_roja)
+                sonido_moneda.play()
 
         # Andrés Miguel Escolastico Lara 23-EISN-2-056
+
+        # Dibujar el humo
+        actualizar_humo()
+        dibujar_humo()
 
         # Reducir gasolina
         gasolina -= reducir_gasolina
